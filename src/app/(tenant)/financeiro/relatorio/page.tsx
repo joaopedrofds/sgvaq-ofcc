@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { gerarPdfRelatorioCaixa, gerarPdfFolhaPremiacao } from '@/actions/financeiro'
 import { FileDown, Loader2 } from 'lucide-react'
@@ -11,15 +12,13 @@ function downloadBase64Pdf(base64: string, filename: string) {
   link.click()
 }
 
-export default function RelatorioPage({
-  searchParams,
-}: {
-  searchParams: { evento_id?: string; modalidade_id?: string }
-}) {
+export default function RelatorioPage() {
+  const searchParams = useSearchParams()
   const [loadingCaixa, setLoadingCaixa] = useState(false)
   const [loadingPremiacao, setLoadingPremiacao] = useState(false)
 
-  const eventoId = searchParams.evento_id
+  const eventoId = searchParams.get('evento_id') ?? undefined
+  const modalidadeId = searchParams.get('modalidade_id') ?? undefined
 
   async function handleDownloadCaixa() {
     if (!eventoId) return
@@ -33,7 +32,6 @@ export default function RelatorioPage({
   }
 
   async function handleDownloadPremiacao() {
-    const modalidadeId = searchParams.modalidade_id
     if (!eventoId || !modalidadeId) return
     setLoadingPremiacao(true)
     try {
@@ -55,7 +53,7 @@ export default function RelatorioPage({
         <Button
           variant="outline"
           onClick={handleDownloadPremiacao}
-          disabled={!eventoId || !searchParams.modalidade_id || loadingPremiacao}
+          disabled={!eventoId || !modalidadeId || loadingPremiacao}
         >
           {loadingPremiacao ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
           Folha de Premiação (PDF)

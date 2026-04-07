@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getQueueSize } from '@/lib/offline/queue'
 import { syncQueue } from '@/lib/offline/sync'
 import { createClient } from '@/lib/supabase/client'
@@ -9,13 +9,18 @@ export function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true)
   const [queueSize, setQueueSize] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  // useRef para evitar stale closure no useEffect de auto-sync
+  const syncingRef = useRef(false)
 
   useEffect(() => {
     const update = () => setIsOnline(navigator.onLine)
     window.addEventListener('online', update)
     window.addEventListener('offline', update)
     update()
-    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
   }, [])
 
   useEffect(() => {
@@ -26,16 +31,25 @@ export function OfflineIndicator() {
   }, [])
 
   useEffect(() => {
-    if (isOnline && queueSize > 0 && !syncing) handleSync()
-  }, [isOnline, queueSize])
+    // Usa ref para ler o valor mais recente de syncing sem adicionar como dependência
+    if (isOnline && queueSize > 0 && !syncingRef.current) {
+      handleSync()
+    }
+  }, [isOnline, queueSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSync() {
+    if (syncingRef.current) return
+    syncingRef.current = true
     setSyncing(true)
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) await syncQueue(session.access_token)
-    setQueueSize(await getQueueSize())
-    setSyncing(false)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) await syncQueue(session.access_token)
+      setQueueSize(await getQueueSize())
+    } finally {
+      syncingRef.current = false
+      setSyncing(false)
+    }
   }
 
   return (

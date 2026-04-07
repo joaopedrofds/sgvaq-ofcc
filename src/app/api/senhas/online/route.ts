@@ -1,67 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { z } from 'zod'
+
+const schema = z.object({
+  modalidade_id: z.string().uuid('modalidade_id inválido'),
+  nome: z.string().min(2, 'Nome obrigatório').max(120),
+  cpf: z.string().min(11).max(14),
+  whatsapp: z.string().optional(),
+})
 
 export async function POST(request: NextRequest) {
-  const { cpf, nome, whatsapp, modalidade_id } = await request.json()
-  if (!cpf || !nome || !modalidade_id) {
-    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+  }
+
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  }
+
+  const { modalidade_id, nome, whatsapp } = parsed.data
+  const cpfClean = parsed.data.cpf.replace(/\D/g, '')
+
+  if (cpfClean.length !== 11) {
+    return NextResponse.json({ error: 'CPF deve ter 11 dígitos' }, { status: 400 })
   }
 
   const supabase = createAdminClient()
-  const cpfClean = cpf.replace(/\D/g, '')
 
-  // Upsert competidor
-  let { data: competidor } = await supabase
+  // Upsert competidor pelo CPF
+  const { data: competidor, error: compErr } = await supabase
     .from('competidores')
+    .upsert(
+      { cpf: cpfClean, nome, whatsapp: whatsapp?.replace(/\D/g, '') },
+      { onConflict: 'cpf', ignoreDuplicates: false }
+    )
     .select('id')
-    .eq('cpf', cpfClean)
     .single()
 
-  if (!competidor) {
-    const { data, error } = await supabase
-      .from('competidores')
-      .insert({ cpf: cpfClean, nome, whatsapp: whatsapp?.replace(/\D/g, '') })
-      .select()
-      .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 422 })
-    competidor = data
+  if (compErr || !competidor) {
+    return NextResponse.json({ error: compErr?.message ?? 'Erro ao cadastrar competidor' }, { status: 422 })
   }
 
-  // Verificar estoque
+  // Buscar valor da senha antes de chamar o RPC
   const { data: modalidade } = await supabase
     .from('modalidades')
-    .select('total_senhas, senhas_vendidas, valor_senha')
+    .select('valor_senha')
     .eq('id', modalidade_id)
     .single()
 
-  if (!modalidade) return NextResponse.json({ error: 'Modalidade não encontrada' }, { status: 404 })
-  if (modalidade.senhas_vendidas >= modalidade.total_senhas) {
-    return NextResponse.json({ error: 'Estoque esgotado' }, { status: 422 })
+  if (!modalidade) {
+    return NextResponse.json({ error: 'Modalidade não encontrada' }, { status: 404 })
   }
 
-  // Próximo número
-  const { data: ultima } = await supabase
-    .from('senhas')
-    .select('numero_senha')
-    .eq('modalidade_id', modalidade_id)
-    .order('numero_senha', { ascending: false })
-    .limit(1)
-    .single()
+  // RPC atômica: verifica estoque + gera numero_senha + insere — sem race condition
+  const { data: result, error: rpcErr } = await supabase.rpc('criar_senha_atomica', {
+    p_modalidade_id: modalidade_id,
+    p_competidor_id: competidor.id,
+    p_canal: 'online',
+    p_status: 'pendente',
+    p_valor_pago: modalidade.valor_senha,
+  })
 
-  const { data: senha, error } = await supabase
-    .from('senhas')
-    .insert({
-      modalidade_id,
-      competidor_id: competidor!.id,
-      numero_senha: (ultima?.numero_senha ?? 0) + 1,
-      canal: 'online',
-      status: 'pendente',
-      valor_pago: modalidade.valor_senha,
-    })
-    .select()
-    .single()
+  if (rpcErr) {
+    return NextResponse.json({ error: rpcErr.message }, { status: 422 })
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 422 })
+  if (result?.error) {
+    return NextResponse.json({ error: result.error }, { status: 422 })
+  }
 
-  return NextResponse.json({ senha_id: senha.id })
+  return NextResponse.json({ senha_id: result.senha_id })
 }

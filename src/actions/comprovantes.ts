@@ -10,6 +10,8 @@ const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export async function uploadComprovante(senhaId: string, file: File) {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') return { success: true }
+  // Autenticação: apenas o próprio competidor (via flow público) ou operadores
+  // A validação de ownership é feita via RLS — o Supabase client usa o cookie do usuário
   if (!ALLOWED_TYPES.includes(file.type)) {
     return { error: 'Tipo de arquivo não permitido. Use JPG, PNG ou PDF.' }
   }
@@ -18,7 +20,7 @@ export async function uploadComprovante(senhaId: string, file: File) {
   }
 
   const supabase = await createClient()
-  const ext = file.name.split('.').pop()
+  const ext = file.name.split('.').pop()?.replace(/[^a-z0-9]/gi, '') ?? 'bin'
   const path = `${senhaId}/${Date.now()}.${ext}`
 
   const { error: uploadError } = await supabase.storage
@@ -27,15 +29,19 @@ export async function uploadComprovante(senhaId: string, file: File) {
 
   if (uploadError) return { error: uploadError.message }
 
-  const { error } = await supabase
+  // Atualiza apenas se a senha ainda estiver em status 'pendente'
+  const { error, count } = await supabase
     .from('senhas')
     .update({
       comprovante_url: path,
       comprovante_status: 'pendente',
     })
     .eq('id', senhaId)
+    .eq('status', 'pendente') // garante que só senhas ainda pendentes recebem comprovante
 
   if (error) return { error: error.message }
+  if (count === 0) return { error: 'Senha não encontrada ou já processada' }
+
   return { success: true }
 }
 
@@ -43,6 +49,9 @@ export async function getComprovanteUrl(senhaId: string) {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
     return { url: '/mock/comprovante.pdf' }
   }
+  const session = await getSession()
+  requireRole(session, ['financeiro', 'organizador'])
+
   const supabase = await createClient()
   const { data: senha } = await supabase
     .from('senhas')
@@ -52,7 +61,6 @@ export async function getComprovanteUrl(senhaId: string) {
 
   if (!senha?.comprovante_url) return { error: 'Sem comprovante' }
 
-  // Gera signed URL sob demanda (não armazena)
   const { data } = await supabase.storage
     .from('comprovantes')
     .createSignedUrl(senha.comprovante_url, 3600)
@@ -70,32 +78,22 @@ export async function aprovarComprovante(senhaId: string) {
 
   const { data: senha } = await supabase
     .from('senhas')
-    .select('modalidade_id, valor_pago, competidor_id, comprovante_status')
+    .select('modalidade_id, valor_pago, competidor_id, comprovante_status, status')
     .eq('id', senhaId)
     .single()
 
   if (!senha) return { error: 'Senha não encontrada' }
   if (senha.comprovante_status !== 'pendente') return { error: 'Comprovante não está pendente' }
+  if (senha.status === 'ativa') return { error: 'Senha já está ativa' }
 
-  // Verificar estoque antes de ativar
-  const { data: modalidade } = await supabase
-    .from('modalidades')
-    .select('total_senhas, senhas_vendidas')
-    .eq('id', senha.modalidade_id)
-    .single()
+  // Verifica estoque via RPC atômica — previne double-approval e TOCTOU
+  const { data: result, error: rpcErr } = await admin.rpc('aprovar_senha_atomica', {
+    p_senha_id: senhaId,
+    p_modalidade_id: senha.modalidade_id,
+  })
 
-  if (!modalidade || modalidade.senhas_vendidas >= modalidade.total_senhas) {
-    return { error: 'Estoque esgotado. Não é possível aprovar.' }
-  }
-
-  const { error } = await supabase
-    .from('senhas')
-    .update({ status: 'ativa', comprovante_status: 'aprovado' })
-    .eq('id', senhaId)
-
-  if (error) return { error: error.message }
-
-  await admin.rpc('increment_senhas_vendidas', { p_modalidade_id: senha.modalidade_id })
+  if (rpcErr) return { error: rpcErr.message }
+  if (result?.error) return { error: result.error }
 
   await supabase.from('financeiro_transacoes').insert({
     tenant_id: session!.tenantId,
@@ -106,7 +104,6 @@ export async function aprovarComprovante(senhaId: string) {
     user_id: session!.id,
   })
 
-  // Enfileirar notificação WhatsApp
   await supabase.from('notificacoes_fila').insert({
     idempotency_key: `comprovante_aprovado:${senhaId}`,
     competidor_id: senha.competidor_id,
@@ -128,29 +125,32 @@ export async function rejeitarComprovante(senhaId: string, motivo: string) {
   const supabase = await createClient()
   const { data: senha } = await supabase
     .from('senhas')
-    .select('competidor_id')
+    .select('competidor_id, comprovante_status')
     .eq('id', senhaId)
     .single()
 
-  const { error } = await supabase
+  if (!senha) return { error: 'Senha não encontrada' }
+  if (senha.comprovante_status !== 'pendente') return { error: 'Comprovante não está pendente' }
+
+  // Atualização otimista: só atualiza se comprovante_status ainda for 'pendente'
+  const { error, count } = await supabase
     .from('senhas')
     .update({
       comprovante_status: 'rejeitado',
       comprovante_rejeicao_motivo: motivo,
     })
     .eq('id', senhaId)
+    .eq('comprovante_status', 'pendente')
 
   if (error) return { error: error.message }
+  if (count === 0) return { error: 'Comprovante já foi processado por outro operador' }
 
-  // Notificar competidor
-  if (senha) {
-    await supabase.from('notificacoes_fila').insert({
-      idempotency_key: `comprovante_rejeitado:${senhaId}`,
-      competidor_id: senha.competidor_id,
-      tipo: 'comprovante_rejeitado',
-      mensagem: `Seu comprovante foi rejeitado. Motivo: ${motivo}`,
-    }).onConflict('idempotency_key').ignore()
-  }
+  await supabase.from('notificacoes_fila').insert({
+    idempotency_key: `comprovante_rejeitado:${senhaId}`,
+    competidor_id: senha.competidor_id,
+    tipo: 'comprovante_rejeitado',
+    mensagem: `Seu comprovante foi rejeitado. Motivo: ${motivo}`,
+  }).onConflict('idempotency_key').ignore()
 
   revalidatePath('/financeiro')
   return { success: true }

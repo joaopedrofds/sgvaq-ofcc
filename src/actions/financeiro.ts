@@ -64,7 +64,7 @@ export async function listarTransacoes(
   return { data: data as FinanceiroTransacao[], count: count ?? 0 }
 }
 
-export async function calcularResumoFinanceiro(eventoId: string): Promise<ResumoFinanceiro> {
+export async function calcularResumoFinanceiro(eventoId: string, limit = 5000): Promise<ResumoFinanceiro> {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
     const transacoes = mockTransacoes.filter(t => t.evento_id === eventoId) as FinanceiroTransacao[]
     return { ...calcularResumoDeTransacoes(transacoes), transacoes }
@@ -78,6 +78,7 @@ export async function calcularResumoFinanceiro(eventoId: string): Promise<Resumo
     .select('*')
     .eq('evento_id', eventoId)
     .order('created_at', { ascending: true })
+    .limit(limit) // evita query ilimitada em eventos grandes
 
   if (error) throw new Error(error.message)
 
@@ -98,7 +99,7 @@ export async function gerarPdfRelatorioCaixa(eventoId: string): Promise<{ base64
     .select('id, nome, data_inicio, data_fim, local')
     .eq('id', eventoId)
     .single()
-  if (evErr) throw new Error(evErr.message)
+  if (evErr || !evento) throw new Error(evErr?.message ?? 'Evento não encontrado')
 
   const resumo = await calcularResumoFinanceiro(eventoId)
 
@@ -129,17 +130,21 @@ export async function gerarPdfFolhaPremiacao(
 
   const supabase = await createClient()
 
-  const { data: evento } = await supabase
+  const { data: evento, error: evErr } = await supabase
     .from('eventos')
     .select('nome, data_inicio')
     .eq('id', eventoId)
     .single()
 
-  const { data: modalidade } = await supabase
+  if (evErr || !evento) throw new Error('Evento não encontrado')
+
+  const { data: modalidade, error: modErr } = await supabase
     .from('modalidades')
     .select('nome')
     .eq('id', modalidadeId)
     .single()
+
+  if (modErr || !modalidade) throw new Error('Modalidade não encontrada')
 
   const { data: ranking } = await supabase
     .from('ranking')
@@ -156,14 +161,14 @@ export async function gerarPdfFolhaPremiacao(
 
   const buffer = await renderToBuffer(
     React.createElement(FolhasPremiacaoDocument, {
-      evento: evento!,
-      modalidade: modalidade!,
+      evento,
+      modalidade,
       ranking: rankingFormatted
     })
   )
 
   return {
     base64: buffer.toString('base64'),
-    filename: `premiacao-${modalidade!.nome.toLowerCase().replace(/\s+/g, '-')}.pdf`
+    filename: `premiacao-${modalidade.nome.toLowerCase().replace(/\s+/g, '-')}.pdf`
   }
 }

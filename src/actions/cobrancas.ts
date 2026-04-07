@@ -26,6 +26,11 @@ export async function calcularCobrancaMensal(
   const session = await getSession()
   requireRole(session, ['organizador'])
 
+  // Garante que o organizador só consulta o próprio tenant
+  if (session!.tenantId !== tenantId) {
+    throw new Error('Acesso negado: tenant não corresponde à sessão')
+  }
+
   const supabase = await createClient()
   const [year, month] = mes.split('-').map(Number)
   const start = new Date(year, month - 1, 1).toISOString()
@@ -60,9 +65,13 @@ export async function criarCobranca(tenantId: string, mes: string): Promise<Cobr
   const { totalCobranca } = await calcularCobrancaMensal(tenantId, mes)
 
   const supabase = await createClient()
+  // Upsert: evita duplicatas para o mesmo (tenant, mes)
   const { data, error } = await supabase
     .from('cobrancas_sgvaq')
-    .insert({ tenant_id: tenantId, mes, total_cobranca: totalCobranca, status: 'pendente' })
+    .upsert(
+      { tenant_id: tenantId, mes, total_cobranca: totalCobranca, status: 'pendente' },
+      { onConflict: 'tenant_id,mes', ignoreDuplicates: false }
+    )
     .select()
     .single()
 

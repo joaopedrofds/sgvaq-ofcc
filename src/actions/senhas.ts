@@ -53,20 +53,6 @@ export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema
     .single()
 
   if (!modalidade) return { error: 'Modalidade não encontrada' }
-  if (modalidade.senhas_vendidas >= modalidade.total_senhas) {
-    return { error: 'Estoque de senhas esgotado para esta modalidade' }
-  }
-
-  // Próximo número de senha
-  const { data: ultimaSenha } = await supabase
-    .from('senhas')
-    .select('numero_senha')
-    .eq('modalidade_id', parsed.data.modalidade_id)
-    .order('numero_senha', { ascending: false })
-    .limit(1)
-    .single()
-
-  const proximoNumero = (ultimaSenha?.numero_senha ?? 0) + 1
 
   // Buscar tenant_user do financeiro
   const { data: tenantUser } = await supabase
@@ -75,25 +61,26 @@ export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema
     .eq('user_id', session!.id)
     .single()
 
-  // Inserir senha
-  const { data: senha, error: senhaError } = await supabase
+  // RPC atômica: verifica estoque + numero_senha + insert sem race condition (TOCTOU)
+  const { data: result, error: rpcErr } = await admin.rpc('criar_senha_atomica', {
+    p_modalidade_id: parsed.data.modalidade_id,
+    p_competidor_id: competidor.id,
+    p_canal: 'presencial',
+    p_status: 'ativa',
+    p_valor_pago: modalidade.valor_senha,
+    p_vendido_por: tenantUser?.id ?? null,
+  })
+
+  if (rpcErr) return { error: rpcErr.message }
+  if (result?.error) return { error: result.error }
+
+  const { data: senha } = await supabase
     .from('senhas')
-    .insert({
-      modalidade_id: parsed.data.modalidade_id,
-      competidor_id: competidor.id,
-      numero_senha: proximoNumero,
-      canal: 'presencial',
-      status: 'ativa',
-      valor_pago: modalidade.valor_senha,
-      vendido_por: tenantUser?.id,
-    })
     .select()
+    .eq('id', result.senha_id)
     .single()
 
-  if (senhaError) return { error: senhaError.message }
-
-  // Incrementar senhas_vendidas atomicamente
-  await admin.rpc('increment_senhas_vendidas', { p_modalidade_id: parsed.data.modalidade_id })
+  if (!senha) return { error: 'Erro ao recuperar senha criada' }
 
   // Registrar no audit log
   await supabase.from('financeiro_transacoes').insert({
