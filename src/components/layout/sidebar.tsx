@@ -5,27 +5,30 @@ import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
 import {
   LayoutDashboard, Calendar, Ticket, Users, UserCheck,
-  DollarSign, AlertTriangle
+  DollarSign, AlertTriangle, Gavel, Mic, FileText, Bell
 } from 'lucide-react'
 
 const navItems: Record<string, { href: string; icon: React.ElementType; label: string }[]> = {
   organizador: [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/eventos', icon: Calendar, label: 'Eventos' },
-    { href: '/competidores', icon: Users, label: 'Competidores' },
-    { href: '/equipe', icon: UserCheck, label: 'Equipe' },
-    { href: '/conflitos', icon: AlertTriangle, label: 'Conflitos' },
+    { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/eventos',     icon: Calendar,        label: 'Eventos' },
+    { href: '/competidores',icon: Users,           label: 'Competidores' },
+    { href: '/financeiro',  icon: DollarSign,      label: 'Financeiro' },
+    { href: '/equipe',      icon: UserCheck,       label: 'Equipe' },
+    { href: '/conflitos',   icon: AlertTriangle,   label: 'Conflitos' },
   ],
   financeiro: [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/financeiro', icon: DollarSign, label: 'Caixa' },
-    { href: '/eventos', icon: Calendar, label: 'Eventos' },
+    { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/financeiro',  icon: DollarSign,      label: 'Caixa' },
+    { href: '/eventos',     icon: Calendar,        label: 'Eventos' },
   ],
   juiz: [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/eventos',     icon: Calendar,        label: 'Eventos' },
   ],
   locutor: [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/eventos',     icon: Calendar,        label: 'Eventos' },
   ],
 }
 
@@ -37,15 +40,21 @@ export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
   const items = navItems[role] ?? navItems.organizador
 
+  function isActive(href: string) {
+    if (href === '/dashboard') return pathname === href
+    return pathname.startsWith(href)
+  }
+
   return (
     <aside className="w-64 bg-amber-900 text-white min-h-screen flex flex-col">
       <div className="p-6 border-b border-amber-800">
-        <h1 className="text-xl font-bold">SGVAQ</h1>
+        <h1 className="text-xl font-bold tracking-tight">SGVAQ</h1>
+        <p className="text-xs text-amber-300 mt-0.5 capitalize">{role}</p>
       </div>
       <nav className="flex-1 p-4 space-y-1">
         {items.map(item => {
           const Icon = item.icon
-          const active = pathname === item.href
+          const active = isActive(item.href)
           return (
             <Link
               key={item.href}
@@ -53,16 +62,19 @@ export default function Sidebar({ role }: SidebarProps) {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
                 active
-                  ? 'bg-amber-700 text-white'
+                  ? 'bg-amber-700 text-white font-medium'
                   : 'text-amber-200 hover:bg-amber-800 hover:text-white'
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
           )
         })}
       </nav>
+      <div className="p-4 border-t border-amber-800">
+        <p className="text-xs text-amber-400 text-center">SGVAQ v1.0</p>
+      </div>
     </aside>
   )
 }
