@@ -2,13 +2,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Building2, DollarSign, Bell } from 'lucide-react'
+import { LayoutDashboard, Building2, DollarSign, Bell, Settings } from 'lucide-react'
 
 const navItems = [
-  { href: '/admin/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/tenants',       icon: Building2,       label: 'Tenants' },
-  { href: '/admin/cobrancas',     icon: DollarSign,      label: 'Cobranças' },
-  { href: '/admin/notificacoes',  icon: Bell,            label: 'Notificações' },
+  { href: '/admin/dashboard',                 icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/tenants',                   icon: Building2,       label: 'Tenants' },
+  { href: '/admin/cobrancas',                 icon: DollarSign,      label: 'Cobranças' },
+  { href: '/admin/notificacoes',              icon: Bell,            label: 'Notificações' },
+  { href: '/admin/configuracoes/criterios',   icon: Settings,        label: 'Critérios' },
 ]
 
 export default function AdminSidebar() {
