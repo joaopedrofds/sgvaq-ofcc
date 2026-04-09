@@ -23,8 +23,8 @@ export async function convidarMembro(formData: z.infer<typeof conviteSchema>) {
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const admin = createAdminClient()
-  const { data: limitOk } = await admin.rpc('check_plan_limit', {
-    p_tenant_id: session!.tenantId,
+  const { data: limitOk } = await admin.rpc('check_plan_limit' as any, {
+    p_tenant_id: session!.tenantId as string,
     p_resource: 'usuarios',
   })
   if (!limitOk) return { error: 'Limite de usuários atingido (máx 5 no plano básico).' }
@@ -43,13 +43,13 @@ export async function convidarMembro(formData: z.infer<typeof conviteSchema>) {
 
   const supabase = await createClient()
   const { error } = await supabase.from('tenant_users').insert({
-    tenant_id: session!.tenantId,
+    tenant_id: session!.tenantId as string,
     user_id: inviteData.user.id,
     nome: parsed.data.nome,
     email: parsed.data.email,
     role: parsed.data.role,
     whatsapp: parsed.data.whatsapp,
-  })
+  } as any)
 
   if (error) return { error: error.message }
   revalidatePath('/equipe')

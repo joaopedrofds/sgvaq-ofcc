@@ -62,7 +62,7 @@ export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema
     .single()
 
   // RPC atômica: verifica estoque + numero_senha + insert sem race condition (TOCTOU)
-  const { data: result, error: rpcErr } = await admin.rpc('criar_senha_atomica', {
+  const { data: result, error: rpcErr } = await admin.rpc('criar_senha_atomica' as any, {
     p_modalidade_id: parsed.data.modalidade_id,
     p_competidor_id: competidor.id,
     p_canal: 'presencial',
@@ -84,13 +84,13 @@ export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema
 
   // Registrar no audit log
   await supabase.from('financeiro_transacoes').insert({
-    tenant_id: session!.tenantId,
+    tenant_id: session!.tenantId as string,
     senha_id: senha.id,
     tipo: 'venda',
     valor: modalidade.valor_senha,
     canal: 'presencial',
     user_id: session!.id,
-  })
+  } as any)
 
   revalidatePath('/eventos')
   return { data: senha }
@@ -132,13 +132,13 @@ export async function cancelarSenha(senhaId: string, motivo?: string) {
   await admin.rpc('decrement_senhas_vendidas', { p_modalidade_id: senha.modalidade_id })
 
   await supabase.from('financeiro_transacoes').insert({
-    tenant_id: session!.tenantId,
+    tenant_id: session!.tenantId as string,
     senha_id: senhaId,
     tipo: 'cancelamento',
     valor: -senha.valor_pago,
     canal: 'presencial',
     user_id: session!.id,
-  })
+  } as any)
 
   return { success: true }
 }

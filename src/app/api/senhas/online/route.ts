@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   // RPC atômica: verifica estoque + gera numero_senha + insere — sem race condition
-  const { data: result, error: rpcErr } = await supabase.rpc('criar_senha_atomica', {
+  const { data: result, error: rpcErr } = await supabase.rpc('criar_senha_atomica' as any, {
     p_modalidade_id: modalidade_id,
     p_competidor_id: competidor.id,
     p_canal: 'online',

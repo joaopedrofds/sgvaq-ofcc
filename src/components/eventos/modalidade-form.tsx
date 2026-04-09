@@ -14,7 +14,7 @@ type FormData = z.infer<typeof modalidadeSchema>
 
 export function ModalidadeForm({ eventoId, tipoProva }: { eventoId: string; tipoProva: 'vaquejada' | 'tambor' }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(modalidadeSchema),
+    resolver: zodResolver(modalidadeSchema as any),
   })
   const [serverError, setServerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -26,7 +26,7 @@ export function ModalidadeForm({ eventoId, tipoProva }: { eventoId: string; tipo
       ...data,
       valor_senha: Math.round(data.valor_senha * 100),
     })
-    if ('error' in result) { setServerError(result.error); setLoading(false); return }
+    if ('error' in result) { setServerError(result.error ?? null); setLoading(false); return }
     reset()
     router.refresh()
     setLoading(false)

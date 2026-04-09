@@ -39,7 +39,7 @@ export function CaixaForm({ modalidades, nomeEvento, dataEvento, tenantId, nomeO
       competidor_cpf: cpf,
       canal: 'presencial',
     })
-    if ('error' in result) { setError(result.error); setLoading(false); return }
+    if ('error' in result) { setError(result.error ?? null); setLoading(false); return }
     setSenha(result.data)
     setLoading(false)
   }

@@ -10,7 +10,7 @@ const passadaSchema = z.object({
   numero_passada: z.number().int().positive(),
   juiz_id: z.string().uuid('juiz_id inválido'),
   pontuacao_total: z.number().min(0).max(9999),
-  detalhes_json: z.record(z.unknown()).optional(),
+  detalhes_json: z.record(z.string(), z.unknown()).optional(),
   penalidade: z.number().min(0).max(999).optional(),
   penalidade_motivo: z.string().max(255).optional(),
   created_at_local: z.string().datetime(),
@@ -62,18 +62,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Verifica que a senha e modalidade pertencem ao tenant do juiz (isolamento de tenant)
-  const { data: senha } = await admin
+  const { data: senha } = await (admin
     .from('senhas')
     .select('id, tenant_id, modalidade_id')
     .eq('id', payload.senha_id)
-    .eq('tenant_id', tenantUser.tenant_id)
-    .single()
+    .eq('tenant_id' as any, tenantUser.tenant_id)
+    .single() as any)
 
   if (!senha) {
     return NextResponse.json({ error: 'Senha não encontrada ou não pertence a este tenant' }, { status: 403 })
   }
 
-  if (senha.modalidade_id !== payload.modalidade_id) {
+  if ((senha as any).modalidade_id !== payload.modalidade_id) {
     return NextResponse.json({ error: 'modalidade_id não corresponde à senha informada' }, { status: 400 })
   }
 
@@ -84,13 +84,13 @@ export async function POST(request: NextRequest) {
     numero_passada: payload.numero_passada,
     juiz_id: payload.juiz_id,
     pontuacao_total: payload.pontuacao_total,
-    detalhes_json: payload.detalhes_json ?? null,
+    detalhes_json: (payload.detalhes_json ?? null) as any,
     penalidade: payload.penalidade ?? 0,
     penalidade_motivo: payload.penalidade_motivo ?? null,
     created_at_local: payload.created_at_local,
     sincronizado: false,
     origem: 'offline',
-  })
+  } as any)
 
   if (error) {
     if (error.code === '23505') return NextResponse.json({ status: 'already_synced' }, { status: 409 })

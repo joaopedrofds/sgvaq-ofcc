@@ -41,7 +41,7 @@ export default function InscricaoPage() {
     setLoading(true)
     setError(null)
     const result = await uploadComprovante(senhaId, file)
-    if ('error' in result) { setError(result.error); setLoading(false); return }
+    if ('error' in result) { setError(result.error ?? null); setLoading(false); return }
     setStep('done')
     setLoading(false)
   }

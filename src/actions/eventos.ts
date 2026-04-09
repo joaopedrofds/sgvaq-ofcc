@@ -23,7 +23,7 @@ export async function createEvento(formData: z.infer<typeof eventoSchema>) {
 
   const admin = createAdminClient()
   const { data: limitOk } = await admin.rpc('check_plan_limit', {
-    p_tenant_id: session!.tenantId,
+    p_tenant_id: session!.tenantId as string,
     p_resource: 'eventos_mes',
   })
   if (!limitOk) return { error: 'Limite de eventos do plano atingido (máx 10/mês no plano básico).' }
@@ -31,7 +31,7 @@ export async function createEvento(formData: z.infer<typeof eventoSchema>) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('eventos')
-    .insert({ ...parsed.data, tenant_id: session!.tenantId })
+    .insert({ ...parsed.data, tenant_id: session!.tenantId as string } as any)
     .select()
     .single()
 
@@ -52,9 +52,9 @@ export async function updateEvento(id: string, formData: Partial<z.infer<typeof 
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('eventos')
-    .update(formData)
+    .update(formData as any)
     .eq('id', id)
-    .eq('tenant_id', session!.tenantId)
+    .eq('tenant_id', session!.tenantId as string)
     .select()
     .single()
 

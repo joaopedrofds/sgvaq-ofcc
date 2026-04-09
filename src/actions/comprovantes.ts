@@ -87,7 +87,7 @@ export async function aprovarComprovante(senhaId: string) {
   if (senha.status === 'ativa') return { error: 'Senha já está ativa' }
 
   // Verifica estoque via RPC atômica — previne double-approval e TOCTOU
-  const { data: result, error: rpcErr } = await admin.rpc('aprovar_senha_atomica', {
+  const { data: result, error: rpcErr } = await admin.rpc('aprovar_senha_atomica' as any, {
     p_senha_id: senhaId,
     p_modalidade_id: senha.modalidade_id,
   })
@@ -96,20 +96,20 @@ export async function aprovarComprovante(senhaId: string) {
   if (result?.error) return { error: result.error }
 
   await supabase.from('financeiro_transacoes').insert({
-    tenant_id: session!.tenantId,
+    tenant_id: session!.tenantId as string,
     senha_id: senhaId,
     tipo: 'venda',
     valor: senha.valor_pago,
     canal: 'online',
     user_id: session!.id,
-  })
+  } as any)
 
-  await supabase.from('notificacoes_fila').insert({
+  await supabase.from('notificacoes_fila').upsert({
     idempotency_key: `comprovante_aprovado:${senhaId}`,
     competidor_id: senha.competidor_id,
     tipo: 'comprovante_aprovado',
     mensagem: 'Seu comprovante foi aprovado! Sua senha está ativa.',
-  }).onConflict('idempotency_key').ignore()
+  } as any, { onConflict: 'idempotency_key', ignoreDuplicates: true } as any)
 
   revalidatePath('/financeiro')
   return { success: true }
@@ -145,12 +145,12 @@ export async function rejeitarComprovante(senhaId: string, motivo: string) {
   if (error) return { error: error.message }
   if (count === 0) return { error: 'Comprovante já foi processado por outro operador' }
 
-  await supabase.from('notificacoes_fila').insert({
+  await supabase.from('notificacoes_fila').upsert({
     idempotency_key: `comprovante_rejeitado:${senhaId}`,
     competidor_id: senha.competidor_id,
     tipo: 'comprovante_rejeitado',
     mensagem: `Seu comprovante foi rejeitado. Motivo: ${motivo}`,
-  }).onConflict('idempotency_key').ignore()
+  } as any, { onConflict: 'idempotency_key', ignoreDuplicates: true } as any)
 
   revalidatePath('/financeiro')
   return { success: true }

@@ -10,12 +10,15 @@ export type CobrancaStatus = 'pendente' | 'pago' | 'isento'
 export interface CobrancaSgvaq {
   id: string
   tenant_id: string
-  mes: string // 'YYYY-MM'
-  total_cobranca: number
-  status: CobrancaStatus
-  comprovante_url: string | null
+  mes_referencia: string // 'YYYY-MM'
+  total_vendas: number
+  valor_devido: number
+  status: string
+  comprovante_pagamento_url: string | null
+  pdf_url: string | null
+  confirmado_em: string | null
+  confirmado_por: string | null
   created_at: string
-  updated_at: string
   tenant?: { nome: string; slug: string }
 }
 
@@ -41,11 +44,11 @@ export async function calcularCobrancaMensal(
     .select('taxa_sgvaq, evento_id')
     .eq('tenant_id', tenantId)
     .gte('created_at', start)
-    .lt('created_at', end)
+    .lt('created_at', end) as any
 
   if (error) throw new Error(error.message)
 
-  const transacoes = data as { taxa_sgvaq: number; evento_id: string }[]
+  const transacoes = (data ?? []) as { taxa_sgvaq: number; evento_id: string }[]
   const totalCobranca = transacoes.reduce((acc, t) => acc + t.taxa_sgvaq, 0)
   const porEvento: Record<string, number> = {}
   for (const t of transacoes) {
@@ -65,18 +68,18 @@ export async function criarCobranca(tenantId: string, mes: string): Promise<Cobr
   const { totalCobranca } = await calcularCobrancaMensal(tenantId, mes)
 
   const supabase = await createClient()
-  // Upsert: evita duplicatas para o mesmo (tenant, mes)
+  // Upsert: evita duplicatas para o mesmo (tenant, mes_referencia)
   const { data, error } = await supabase
     .from('cobrancas_sgvaq')
     .upsert(
-      { tenant_id: tenantId, mes, total_cobranca: totalCobranca, status: 'pendente' },
-      { onConflict: 'tenant_id,mes', ignoreDuplicates: false }
+      { tenant_id: tenantId, mes_referencia: mes, total_vendas: totalCobranca, status: 'pendente' } as any,
+      { onConflict: 'tenant_id,mes_referencia', ignoreDuplicates: false } as any
     )
     .select()
     .single()
 
   if (error) throw new Error(error.message)
-  return data as CobrancaSgvaq
+  return data as unknown as CobrancaSgvaq
 }
 
 export async function atualizarStatusCobranca(
@@ -98,12 +101,12 @@ export async function atualizarStatusCobranca(
       .from('comprovantes')
       .upload(filename, buffer, { contentType: 'application/pdf', upsert: true })
     if (uploadError) throw new Error(uploadError.message)
-    updates.comprovante_url = filename
+    updates.comprovante_pagamento_url = filename
   }
 
   const { error } = await supabase
     .from('cobrancas_sgvaq')
-    .update(updates)
+    .update(updates as any)
     .eq('id', cobrancaId)
 
   if (error) throw new Error(error.message)
@@ -126,12 +129,12 @@ export async function listarCobrancas(
     .order('mes', { ascending: false })
 
   if (filters.tenantId) query = query.eq('tenant_id', filters.tenantId) as any
-  if (filters.mes) query = query.eq('mes', filters.mes) as any
+  if (filters.mes) query = query.eq('mes_referencia' as any, filters.mes) as any
   if (filters.status) query = query.eq('status', filters.status) as any
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as CobrancaSgvaq[]
+  return data as unknown as CobrancaSgvaq[]
 }
 
 export async function gerarPdfCobranca(cobrancaId: string): Promise<{ base64: string; filename: string }> {
@@ -148,8 +151,10 @@ export async function gerarPdfCobranca(cobrancaId: string): Promise<{ base64: st
     .eq('id', cobrancaId)
     .single()
   if (error) throw new Error(error.message)
+  
+  const cobrancaAny = cobranca as any
 
-  const { totalCobranca, porEvento } = await calcularCobrancaMensal(cobranca.tenant_id, cobranca.mes)
+  const { totalCobranca, porEvento } = await calcularCobrancaMensal(cobrancaAny.tenant_id, cobrancaAny.mes_referencia)
   const eventoIds = Object.keys(porEvento)
   const { data: eventos } = await supabase
     .from('eventos')
@@ -171,8 +176,8 @@ export async function gerarPdfCobranca(cobrancaId: string): Promise<{ base64: st
 
   const buffer = await renderToBuffer(
     React.default.createElement(RelatorioCobrancaDocument, {
-      tenant: cobranca.tenant,
-      mes: cobranca.mes,
+      tenant: cobrancaAny.tenant,
+      mes: cobrancaAny.mes_referencia,
       eventos: eventosFormatted,
       totalCobranca
     })
@@ -180,6 +185,6 @@ export async function gerarPdfCobranca(cobrancaId: string): Promise<{ base64: st
 
   return {
     base64: buffer.toString('base64'),
-    filename: `cobranca-sgvaq-${cobranca.tenant.slug}-${cobranca.mes}.pdf`
+    filename: `cobranca-sgvaq-${cobrancaAny.tenant.slug}-${cobrancaAny.mes_referencia}.pdf`
   }
 }

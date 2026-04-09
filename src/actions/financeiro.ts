@@ -56,12 +56,12 @@ export async function listarTransacoes(
   const { data, error, count } = await supabase
     .from('financeiro_transacoes')
     .select('*', { count: 'exact' })
-    .eq('evento_id', eventoId)
+    .eq('evento_id' as any, eventoId)
     .order('created_at', { ascending: false })
-    .range(from, to)
+    .range(from, to) as any
 
   if (error) throw new Error(error.message)
-  return { data: data as FinanceiroTransacao[], count: count ?? 0 }
+  return { data: (data ?? []) as FinanceiroTransacao[], count: count ?? 0 }
 }
 
 export async function calcularResumoFinanceiro(eventoId: string, limit = 5000): Promise<ResumoFinanceiro> {
@@ -76,14 +76,15 @@ export async function calcularResumoFinanceiro(eventoId: string, limit = 5000): 
   const { data, error } = await supabase
     .from('financeiro_transacoes')
     .select('*')
-    .eq('evento_id', eventoId)
+    .eq('evento_id' as any, eventoId)
     .order('created_at', { ascending: true })
-    .limit(limit) // evita query ilimitada em eventos grandes
+    .limit(limit) as any // evita query ilimitada em eventos grandes
 
   if (error) throw new Error(error.message)
 
-  const transacoes = data as FinanceiroTransacao[]
-  return { ...calcularResumoDeTransacoes(transacoes), transacoes }
+  const transacoes = (data ?? []) as FinanceiroTransacao[]
+  const resumoCalc = calcularResumoDeTransacoes(transacoes)
+  return { ...resumoCalc, transacoes }
 }
 
 export async function gerarPdfRelatorioCaixa(eventoId: string): Promise<{ base64: string; filename: string }> {

@@ -41,8 +41,8 @@ export async function fazerCheckin(senhaId: string, tenantIdQR: string) {
     .from('senhas')
     .select('status, modalidade_id, tenant_id, competidores(nome)')
     .eq('id', senhaId)
-    .eq('tenant_id', session!.tenantId!)
-    .single()
+    .eq('tenant_id' as any, session!.tenantId!)
+    .single() as any
 
   if (!senha) return { error: 'Senha não encontrada neste evento' }
   if (senha.status === 'cancelada') return { error: 'Senha cancelada' }
@@ -88,9 +88,9 @@ export async function checkinManual(numeroSenha: number, modalidadeId: string) {
     .select('id, tenant_id')
     .eq('numero_senha', numeroSenha)
     .eq('modalidade_id', modalidadeId)
-    .eq('tenant_id', session!.tenantId!)
+    .eq('tenant_id' as any, session!.tenantId!)
     .eq('status', 'ativa')
-    .single()
+    .single() as any
 
   if (!senha) return { error: 'Senha não encontrada ou já usada' }
 

@@ -34,7 +34,7 @@ export async function listarNotificacoesFalhas(limit = 100): Promise<Notificacao
     .limit(limit)
 
   if (error) throw new Error(error.message)
-  return data as NotificacaoFila[]
+  return (data ?? []) as unknown as NotificacaoFila[]
 }
 
 export async function listarTodasNotificacoes(
@@ -57,11 +57,11 @@ export async function listarTodasNotificacoes(
     .limit(limit)
 
   if (filters.status) query = query.eq('status', filters.status) as any
-  if (filters.tenantId) query = query.eq('tenant_id', filters.tenantId) as any
+  if (filters.tenantId) query = (query as any).eq('tenant_id', filters.tenantId)
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as NotificacaoFila[]
+  return (data ?? []) as unknown as NotificacaoFila[]
 }
 
 export async function reenviarNotificacao(notificacaoId: string): Promise<void> {
@@ -78,7 +78,7 @@ export async function reenviarNotificacao(notificacaoId: string): Promise<void> 
       proximo_retry_em: null,
       erro: null,
       updated_at: new Date().toISOString()
-    })
+    } as any)
     .eq('id', notificacaoId)
 
   if (error) throw new Error(error.message)

@@ -1,7 +1,6 @@
 import { listarCobrancas } from '@/actions/cobrancas'
 import { CobrancaStatusBadge } from '@/components/financeiro/CobrancaStatusBadge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 function formatBRL(centavos: number) {
@@ -24,14 +23,17 @@ export default async function CobrancasPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="font-semibold">{(c.tenant as any)?.nome ?? c.tenant_id}</p>
-                <p className="text-sm text-muted-foreground">{c.mes}</p>
+                <p className="text-sm text-muted-foreground">{c.mes_referencia}</p>
               </div>
               <div className="flex items-center gap-4">
-                <CobrancaStatusBadge status={c.status} />
-                <p className="font-bold text-lg">{formatBRL(c.total_cobranca)}</p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/admin/cobrancas/${c.id}`}>Detalhes</Link>
-                </Button>
+                <CobrancaStatusBadge status={c.status as any} />
+                <p className="font-bold text-lg">{formatBRL(c.total_vendas)}</p>
+                <Link
+                  href={`/admin/cobrancas/${c.id}`}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium h-7 px-2.5 border border-border bg-background hover:bg-muted transition-colors"
+                >
+                  Detalhes
+                </Link>
               </div>
             </CardContent>
           </Card>
