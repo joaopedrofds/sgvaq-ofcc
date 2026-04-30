@@ -35,9 +35,9 @@ export async function uploadComprovante(senhaId: string, file: File) {
     .update({
       comprovante_url: path,
       comprovante_status: 'pendente',
-    })
+    } as any)
     .eq('id', senhaId)
-    .eq('status', 'pendente') // garante que só senhas ainda pendentes recebem comprovante
+    .eq('status', 'pendente') as any // garante que só senhas ainda pendentes recebem comprovante
 
   if (error) return { error: error.message }
   if (count === 0) return { error: 'Senha não encontrada ou já processada' }
@@ -104,12 +104,12 @@ export async function aprovarComprovante(senhaId: string) {
     user_id: session!.id,
   } as any)
 
-  await supabase.from('notificacoes_fila').upsert({
+  await (supabase.from('notificacoes_fila') as any).upsert({
     idempotency_key: `comprovante_aprovado:${senhaId}`,
     competidor_id: senha.competidor_id,
     tipo: 'comprovante_aprovado',
     mensagem: 'Seu comprovante foi aprovado! Sua senha está ativa.',
-  } as any, { onConflict: 'idempotency_key', ignoreDuplicates: true } as any)
+  }, { onConflict: 'idempotency_key', ignoreDuplicates: true })
 
   revalidatePath('/financeiro')
   return { success: true }
@@ -133,24 +133,24 @@ export async function rejeitarComprovante(senhaId: string, motivo: string) {
   if (senha.comprovante_status !== 'pendente') return { error: 'Comprovante não está pendente' }
 
   // Atualização otimista: só atualiza se comprovante_status ainda for 'pendente'
-  const { error, count } = await supabase
+  const { error, count } = await (supabase
     .from('senhas')
     .update({
       comprovante_status: 'rejeitado',
       comprovante_rejeicao_motivo: motivo,
     })
     .eq('id', senhaId)
-    .eq('comprovante_status', 'pendente')
+    .eq('comprovante_status', 'pendente') as any)
 
   if (error) return { error: error.message }
   if (count === 0) return { error: 'Comprovante já foi processado por outro operador' }
 
-  await supabase.from('notificacoes_fila').upsert({
+  await (supabase.from('notificacoes_fila') as any).upsert({
     idempotency_key: `comprovante_rejeitado:${senhaId}`,
     competidor_id: senha.competidor_id,
     tipo: 'comprovante_rejeitado',
     mensagem: `Seu comprovante foi rejeitado. Motivo: ${motivo}`,
-  } as any, { onConflict: 'idempotency_key', ignoreDuplicates: true } as any)
+  }, { onConflict: 'idempotency_key', ignoreDuplicates: true })
 
   revalidatePath('/financeiro')
   return { success: true }

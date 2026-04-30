@@ -4,8 +4,10 @@ import { getSession } from '@/lib/auth/get-session'
 import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import { modalidadeSchema } from '@/lib/modalidades/schema'
+export { modalidadeSchema } from '@/lib/modalidades/schema'
 import { mockModalidades, mockCriterios } from '@/lib/mock/data'
 
+import { z } from 'zod'
 export async function createModalidade(eventoId: string, formData: z.infer<typeof modalidadeSchema>) {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
     return { data: { id: 'mock-mod-' + Date.now(), evento_id: eventoId, ...formData, senhas_vendidas: 0, checkin_aberto: false } }

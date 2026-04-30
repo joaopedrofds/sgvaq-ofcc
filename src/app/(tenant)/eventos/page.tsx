@@ -30,7 +30,7 @@ export default async function EventosPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {result.data?.map(evento => (
+          {result.data?.map((evento: any) => (
             <EventoCard
               key={evento.id}
               id={evento.id}

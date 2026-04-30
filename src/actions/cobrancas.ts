@@ -69,11 +69,10 @@ export async function criarCobranca(tenantId: string, mes: string): Promise<Cobr
 
   const supabase = await createClient()
   // Upsert: evita duplicatas para o mesmo (tenant, mes_referencia)
-  const { data, error } = await supabase
-    .from('cobrancas_sgvaq')
+  const { data, error } = await (supabase.from('cobrancas_sgvaq') as any)
     .upsert(
-      { tenant_id: tenantId, mes_referencia: mes, total_vendas: totalCobranca, status: 'pendente' } as any,
-      { onConflict: 'tenant_id,mes_referencia', ignoreDuplicates: false } as any
+      { tenant_id: tenantId, mes_referencia: mes, total_vendas: totalCobranca, status: 'pendente' },
+      { onConflict: 'tenant_id,mes_referencia', ignoreDuplicates: false }
     )
     .select()
     .single()

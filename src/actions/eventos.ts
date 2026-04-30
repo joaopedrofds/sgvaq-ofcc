@@ -7,11 +7,12 @@ import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import type { EventoStatus } from '@/types'
 import { eventoSchema, validateEventoTransition } from '@/lib/eventos/schema'
+export { eventoSchema, validateEventoTransition } from '@/lib/eventos/schema'
 import { mockEventos, addMockEvento } from '@/lib/mock/data'
 
 export async function createEvento(formData: z.infer<typeof eventoSchema>) {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
-    const novoEvento = { id: 'mock-evento-' + Date.now(), ...formData, status: 'rascunho' as const, tenant_id: 'mock-tenant-1', banner_url: null, regulamento_url: null, created_at: new Date().toISOString(), modalidades: [{ count: 0 }] }
+    const novoEvento = { id: 'mock-evento-' + Date.now(), ...formData, local: formData.local ?? null, status: 'rascunho' as const, tenant_id: 'mock-tenant-1', banner_url: null, regulamento_url: null, created_at: new Date().toISOString(), modalidades: [{ count: 0 }] }
     addMockEvento(novoEvento)
     return { data: novoEvento }
   }

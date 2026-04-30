@@ -70,7 +70,7 @@ export default async function FinanceiroPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {pendentes.map(s => <ComprovanteReview key={s.id} senha={s} />)}
+            {pendentes.map((s: any) => <ComprovanteReview key={s.id} senha={s} />)}
           </div>
         )}
       </section>

@@ -20,7 +20,7 @@ export interface NotificacaoFila {
 
 export async function listarNotificacoesFalhas(limit = 100): Promise<NotificacaoFila[]> {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
-    return mockNotificacoes.filter(n => n.status === 'falhou') as NotificacaoFila[]
+    return mockNotificacoes.filter(n => n.status === 'falhou') as unknown as NotificacaoFila[]
   }
   const session = await getSession()
   requireRole(session, ['organizador'])
@@ -44,7 +44,7 @@ export async function listarTodasNotificacoes(
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
     let result = [...mockNotificacoes]
     if (filters.status) result = result.filter(n => n.status === filters.status)
-    return result as NotificacaoFila[]
+    return result as unknown as NotificacaoFila[]
   }
   const session = await getSession()
   requireRole(session, ['organizador'])

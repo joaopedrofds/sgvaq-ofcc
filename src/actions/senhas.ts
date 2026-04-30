@@ -1,10 +1,12 @@
 'use server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/get-session'
 import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import { vendaSchema } from '@/lib/senhas/schema'
+export { vendaSchema } from '@/lib/senhas/schema'
 import { mockSenhas, mockCompetidores, mockModalidades } from '@/lib/mock/data'
 
 export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema>) {

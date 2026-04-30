@@ -13,7 +13,7 @@ export default async function ModalidadesPage({ params }: { params: Promise<{ id
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Modalidades — {evento?.nome}</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {modalidades?.map(m => (
+        {modalidades?.map((m: any) => (
           <div key={m.id} className="border rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
               <h3 className="font-semibold">{m.nome}</h3>

@@ -18,8 +18,8 @@ export async function getSession(): Promise<SessionUser | null> {
 
   if (!user) return null
 
-  const role = user.app_metadata?.role ?? user.user_metadata?.role
-  const tenantId = user.app_metadata?.tenant_id ?? user.user_metadata?.tenant_id
+  const role = user.app_metadata?.role ?? (user.user_metadata as any)?.role
+  const tenantId = user.app_metadata?.tenant_id ?? (user.user_metadata as any)?.tenant_id
 
   return {
     id: user.id,

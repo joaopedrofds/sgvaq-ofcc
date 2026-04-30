@@ -95,10 +95,10 @@ export async function excluirCriterio(id: string): Promise<{ error?: string }> {
   requireRole(session, ['organizador'])
 
   const supabase = await createClient()
-  const { error } = await supabase
+  const { error } = await (supabase
     .from('criterios_pontuacao')
     .delete()
-    .eq('id', id)
+    .eq('id', id) as any)
 
   if (error) return { error: error.message }
   revalidatePath('/admin/configuracoes/criterios')

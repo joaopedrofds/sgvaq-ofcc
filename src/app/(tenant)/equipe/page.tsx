@@ -35,7 +35,7 @@ export default async function EquipePage() {
           <h2 className="text-xl font-bold text-white mb-6">Membros Adicionados</h2>
           
           <div className="space-y-3">
-            {result.data?.map(u => (
+            {result.data?.map((u: any) => (
               <div key={u.id} className="group relative flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900 border border-stone-800 hover:border-stone-700 rounded-2xl p-5 transition-all shadow-xl">
                 <div className="flex items-center gap-4 mb-4 sm:mb-0">
                   <div className="w-12 h-12 rounded-full bg-stone-950 border border-stone-800 flex items-center justify-center flex-shrink-0">

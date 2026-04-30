@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation'
 
 export function CompetidorForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<CompetidorFormData>({
-    resolver: zodResolver(competidorSchema),
+    resolver: zodResolver(competidorSchema as any),
   })
   const [serverError, setServerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -31,7 +31,7 @@ export function CompetidorForm() {
 
     const result = await createCompetidor(formData)
     if ('error' in result) {
-      setServerError(result.error)
+      setServerError(result.error ?? null)
       setLoading(false)
       return
     }

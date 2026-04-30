@@ -14,7 +14,7 @@ export function useRankingRealtime(modalidadeId: string) {
       .select('*, competidores(nome), senhas(numero_senha)')
       .eq('modalidade_id', modalidadeId)
       .order('posicao')
-      .then(({ data }) => { if (data) setRanking(data) })
+      .then(({ data }: any) => { if (data) setRanking(data) })
 
     // Subscribe para atualizações
     const channel = supabase
@@ -31,7 +31,7 @@ export function useRankingRealtime(modalidadeId: string) {
           .select('*, competidores(nome), senhas(numero_senha)')
           .eq('modalidade_id', modalidadeId)
           .order('posicao')
-          .then(({ data }) => { if (data) setRanking(data) })
+          .then(({ data }: any) => { if (data) setRanking(data) })
       })
       .subscribe()
 
@@ -54,7 +54,7 @@ export function useFilaRealtime(modalidadeId: string) {
       .in('status', ['aguardando', 'chamado'])
       .order('ordem_atual')
       .limit(10)
-      .then(({ data }) => { if (data) setFila(data) })
+      .then(({ data }: any) => { if (data) setFila(data) })
 
     const channel = supabase
       .channel(`fila:${modalidadeId}`)
@@ -71,7 +71,7 @@ export function useFilaRealtime(modalidadeId: string) {
           .in('status', ['aguardando', 'chamado'])
           .order('ordem_atual')
           .limit(10)
-          .then(({ data }) => { if (data) setFila(data) })
+          .then(({ data }: any) => { if (data) setFila(data) })
       })
       .subscribe()
 
