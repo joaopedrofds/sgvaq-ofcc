@@ -9,7 +9,7 @@ export default async function TenantLayout({ children }: { children: React.React
   if (session.role === 'super_admin') redirect('/admin/dashboard')
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen text-[#F3EFEA]">
       <Sidebar role={session.role as UserRole} />
       <main className="flex-1 p-8 overflow-auto">
         {children}

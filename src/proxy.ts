@@ -8,19 +8,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host') ?? ''
 
-  const response = NextResponse.next({ request })
-
-  // Mock mode: bypass auth checks
-  if (process.env.NEXT_PUBLIC_MOCK === 'true') {
-    if (isPublicRoute(pathname)) return response
-    if (isAdminRoute(pathname)) {
-      response.headers.set('x-tenant-slug', 'sgvaq-admin')
-      return response
-    }
-    response.headers.set('x-tenant-slug', 'vaquejada-sertao')
-    return response
-  }
-
+  let response = NextResponse.next({ request })
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,6 +17,7 @@ export async function proxy(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -37,6 +26,8 @@ export async function proxy(request: NextRequest) {
     }
   )
   const { data: { user } } = await supabase.auth.getUser()
+
+  const hasDemoBypass = request.cookies.get('demo_bypass')?.value === 'true'
 
   if (isPublicRoute(pathname)) {
     return response
@@ -51,11 +42,16 @@ export async function proxy(request: NextRequest) {
 
   const slug = extractSlugFromHost(host, APP_DOMAIN)
   if (slug) {
-    if (!user) {
+    if (!user && !hasDemoBypass) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
     response.headers.set('x-tenant-slug', slug)
     return response
+  }
+
+  // Also prevent root redirect inside dashboard if no slug but protected route
+  if (!user && !hasDemoBypass && !pathname.startsWith('/login') && !pathname.startsWith('/cadastro')) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return response

@@ -1,78 +1,128 @@
+import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth/get-session'
+import { requireRole } from '@/lib/auth/require-role'
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react'
-import { mockPassadasConflitos } from '@/lib/mock/data'
 
-export default function ConflitosPage() {
-  const conflitos = process.env.NEXT_PUBLIC_MOCK === 'true' ? mockPassadasConflitos : []
+interface Conflito {
+  competidor_nome: string
+  cpf: string
+  modalidades: { nome: string; evento_nome: string; data_inicio: string }[]
+}
+
+export default async function ConflitosPage() {
+  const session = await getSession()
+  requireRole(session, ['organizador'])
+
+  const supabase = await createClient()
+
+  const { data: senhas } = await supabase
+    .from('senhas')
+    .select(`
+      competidor_id,
+      competidores(nome, cpf),
+      modalidades(nome, eventos(nome, data_inicio, data_fim, status))
+    `)
+    .eq('status', 'ativa')
+    .not('modalidades.eventos.status', 'eq', 'cancelado')
+
+  const porCompetidor = new Map<string, Conflito>()
+
+  for (const s of senhas ?? []) {
+    const comp = s.competidores as any
+    const mod = s.modalidades as any
+    const ev = mod?.eventos
+
+    if (!comp || !mod || !ev) continue
+
+    const key = s.competidor_id
+    if (!porCompetidor.has(key)) {
+      porCompetidor.set(key, {
+        competidor_nome: comp.nome,
+        cpf: comp.cpf,
+        modalidades: [],
+      })
+    }
+
+    porCompetidor.get(key)!.modalidades.push({
+      nome: mod.nome,
+      evento_nome: ev.nome,
+      data_inicio: ev.data_inicio,
+    })
+  }
+
+  const conflitos: Conflito[] = []
+  for (const [, c] of porCompetidor) {
+    if (c.modalidades.length > 1) conflitos.push(c)
+  }
+
+  conflitos.sort((a, b) => b.modalidades.length - a.modalidades.length)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Conflitos de Sincronização</h1>
-        {conflitos.length > 0 && (
-          <span className="bg-red-100 text-red-700 text-sm font-medium px-3 py-1 rounded-full">
-            {conflitos.length} pendente(s)
-          </span>
-        )}
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-stone-800">
+        <div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Análise de Malha</h1>
+          <p className="text-stone-400 text-sm mt-1">
+            Mapeamento automático de sobreposição de senhas (competidores inscritos em múltiplas baterias/eventos).
+          </p>
+        </div>
       </div>
 
       {conflitos.length === 0 ? (
-        <div className="text-center py-12">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-          <p className="text-gray-500">Nenhum conflito de sincronização registrado.</p>
-          <p className="text-gray-400 text-sm mt-1">
-            Conflitos ocorrem quando duas pontuações offline são registradas para a mesma passada.
+        <div className="p-12 text-center bg-stone-900 border border-emerald-500/20 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.05)]">
+          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-emerald-400 mb-2">Malha Sistêmica Limpa</h2>
+          <p className="text-stone-400 max-w-md mx-auto">
+            A inteligência do SGVAQ detectou taxa zero de conflitos de horário. Todos os atletas farão suas senhas sequencialmente sem choques.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {conflitos.map(conf => (
-            <div key={conf.id} className="bg-white border border-red-200 rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  <div>
-                    <p className="font-medium">Conflito na passada #{conf.dados_conflito.numero_passada}</p>
-                    <p className="text-sm text-gray-500">Senha: {conf.dados_conflito.senha_id}</p>
-                  </div>
-                </div>
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-                  {conf.resolvido ? 'Resolvido' : 'Pendente'}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-3">
-                <div>
-                  <p className="text-gray-500 mb-1">Original</p>
-                  <p className="font-medium">{conf.dados_conflito.pontuacao_original} pts</p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3" />
-                    {new Date(conf.dados_conflito.criado_em_local_original).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-500 mb-1">Conflitante</p>
-                  <p className="font-medium">{conf.dados_conflito.pontuacao_conflitante} pts</p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3" />
-                    {new Date(conf.dados_conflito.criado_em_local_conflitante).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-              {!conf.resolvido && (
-                <div className="flex gap-2">
-                  <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-md text-sm font-medium">
-                    Manter original
-                  </button>
-                  <button className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-md text-sm font-medium">
-                    Usar conflitante
-                  </button>
-                  <button className="border border-gray-300 px-4 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-                    Revisar detalhes
-                  </button>
-                </div>
-              )}
+        <>
+          <div className="flex items-center gap-4 p-5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.1)]">
+            <div className="w-10 h-10 bg-rose-500/20 rounded-full flex items-center justify-center shrink-0">
+               <AlertTriangle className="h-5 w-5 text-rose-500" />
             </div>
-          ))}
-        </div>
+             <div>
+                <h3 className="font-bold text-rose-500 text-lg">Alerta Operacional</h3>
+                <p className="text-sm">Encontramos <strong className="text-white">{conflitos.length} competidor{conflitos.length > 1 ? 'es' : ''}</strong> com risco de sobreposição de batidas na pista de prova.</p>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            {conflitos.map(c => (
+              <div key={c.cpf} className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-2xl group">
+                <div className="p-6 border-b border-stone-800/50 flex flex-col items-start gap-1">
+                   <div className="flex items-center justify-between w-full mb-3">
+                     <span className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-lg text-xs font-bold tracking-widest uppercase">
+                       {c.modalidades.length} Entradas
+                     </span>
+                     <span className="text-xs font-mono text-stone-500">
+                       CPF {c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
+                     </span>
+                   </div>
+                   <h4 className="text-xl font-bold text-white">{c.competidor_nome}</h4>
+                </div>
+                
+                <div className="p-2 space-y-1 bg-stone-950/50">
+                  {c.modalidades.map((m, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-stone-900/50 rounded-2xl border border-stone-800/40 hover:bg-stone-800 transition-colors">
+                      <div>
+                        <p className="font-bold text-stone-200">{m.nome}</p>
+                        <p className="text-sm text-stone-500">{m.evento_nome}</p>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-mono text-amber-500/80 bg-amber-500/5 px-3 py-1.5 rounded-lg border border-amber-500/10">
+                         <Clock className="w-3.5 h-3.5" />
+                         {new Date(m.data_inicio).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
