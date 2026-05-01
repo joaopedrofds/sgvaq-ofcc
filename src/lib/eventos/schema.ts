@@ -6,9 +6,9 @@ export const eventoSchema = z.object({
   tipo: z.enum(['vaquejada', 'tambor']),
   data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
   data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
-  local: z.string().optional(),
+  local: z.string().optional().or(z.literal('')),
   cidade: z.string().min(2, 'Cidade obrigatória'),
-  estado: z.string().length(2, 'UF deve ter 2 caracteres'),
+  estado: z.string().min(2, 'UF deve ter 2 caracteres').max(2, 'UF deve ter 2 caracteres'),
 }).refine(d => d.data_fim >= d.data_inicio, {
   message: 'data_fim deve ser igual ou posterior a data_inicio',
   path: ['data_fim'],

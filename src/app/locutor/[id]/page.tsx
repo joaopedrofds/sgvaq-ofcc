@@ -4,7 +4,7 @@ import { Telao } from '@/components/locutor/telao'
 
 export default async function LocutorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params // id = modalidade_id
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
 
   const { data: modalidade } = await supabase
     .from('modalidades')

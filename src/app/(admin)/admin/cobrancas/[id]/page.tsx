@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,14 +13,15 @@ function downloadBase64Pdf(base64: string, filename: string) {
   link.click()
 }
 
-export default function CobrancaDetailPage({ params }: { params: { id: string } }) {
+export default function CobrancaDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 
   async function handleDownloadPdf() {
     setLoading('pdf')
     try {
-      const { base64, filename } = await gerarPdfCobranca(params.id)
+      const { base64, filename } = await gerarPdfCobranca(id)
       downloadBase64Pdf(base64, filename)
     } finally {
       setLoading(null)
@@ -30,7 +31,7 @@ export default function CobrancaDetailPage({ params }: { params: { id: string } 
   async function handleMarcarPago() {
     setLoading('pago')
     try {
-      await atualizarStatusCobranca(params.id, 'pago')
+      await atualizarStatusCobranca(id, 'pago')
       router.refresh()
     } finally {
       setLoading(null)
@@ -40,7 +41,7 @@ export default function CobrancaDetailPage({ params }: { params: { id: string } 
   async function handleMarcarIsento() {
     setLoading('isento')
     try {
-      await atualizarStatusCobranca(params.id, 'isento')
+      await atualizarStatusCobranca(id, 'isento')
       router.refresh()
     } finally {
       setLoading(null)

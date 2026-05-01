@@ -9,7 +9,7 @@ export async function getTenantBySlug(slug: string): Promise<TenantContext | nul
     return { tenantId: cached.tenantId, slug }
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const { data } = await supabase
     .from('tenants')
     .select('id')

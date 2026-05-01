@@ -8,7 +8,7 @@ import type { EventoStatus } from '@/types'
 
 export default async function PublicEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const { data: evento } = await supabase
     .from('eventos')
     .select('*, modalidades(*)')

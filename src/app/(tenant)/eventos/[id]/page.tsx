@@ -6,11 +6,20 @@ import { StatusTransition } from '@/components/eventos/status-transition'
 import Link from 'next/link'
 import { Layers, Ticket, QrCode, Trophy } from 'lucide-react'
 import type { EventoStatus } from '@/types'
+import { mockEventos } from '@/lib/mock/data'
 
 export default async function EventoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: evento } = await supabase.from('eventos').select('*').eq('id', id).single()
+  let evento: any
+
+  if (process.env.NEXT_PUBLIC_MOCK === 'true') {
+    evento = mockEventos.find(e => e.id === id)
+  } else {
+    const supabase = await createClient()
+    const { data } = await supabase.from('eventos').select('*').eq('id', id).single()
+    evento = data
+  }
+
   if (!evento) notFound()
 
   const actionLinks = [

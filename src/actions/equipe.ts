@@ -22,7 +22,7 @@ export async function convidarMembro(formData: z.infer<typeof conviteSchema>) {
   const parsed = conviteSchema.safeParse(formData)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
   const { data: limitOk } = await admin.rpc('check_plan_limit' as any, {
     p_tenant_id: session!.tenantId as string,
     p_resource: 'usuarios',

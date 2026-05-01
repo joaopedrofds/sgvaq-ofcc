@@ -74,7 +74,7 @@ export async function aprovarComprovante(senhaId: string) {
   requireRole(session, ['financeiro', 'organizador'])
 
   const supabase = await createClient()
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
 
   const { data: senha } = await supabase
     .from('senhas')

@@ -4,7 +4,6 @@ import { getSession } from '@/lib/auth/get-session'
 import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import { modalidadeSchema } from '@/lib/modalidades/schema'
-export { modalidadeSchema } from '@/lib/modalidades/schema'
 import { mockModalidades, mockCriterios } from '@/lib/mock/data'
 
 import { z } from 'zod'

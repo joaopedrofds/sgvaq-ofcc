@@ -11,11 +11,10 @@ function formatBRL(centavos: number) {
     .format(centavos / 100)
 }
 
-export default async function FinanceiroPage({
-  searchParams,
-}: {
-  searchParams: { evento_id?: string; page?: string }
+export default async function FinanceiroPage(props: {
+  searchParams: Promise<{ evento_id?: string; page?: string }>
 }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
 
   // Comprovantes pendentes (always shown)

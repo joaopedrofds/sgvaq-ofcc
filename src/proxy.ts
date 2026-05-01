@@ -8,6 +8,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host') ?? ''
 
+  // Early return no modo mock — pula toda lógica de autenticação Supabase
+  if (process.env.NEXT_PUBLIC_MOCK === 'true') {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({ request })
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

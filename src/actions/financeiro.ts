@@ -28,7 +28,7 @@ export interface FinanceiroTransacao {
   evento_id: string
 }
 
-export function calcularResumoDeTransacoes(transacoes: FinanceiroTransacao[]): Omit<ResumoFinanceiro, 'transacoes'> {
+export async function calcularResumoDeTransacoes(transacoes: FinanceiroTransacao[]): Promise<Omit<ResumoFinanceiro, 'transacoes'>> {
   const totalBruto = transacoes.reduce((acc, t) => acc + t.valor, 0)
   const totalTaxaSgvaq = transacoes.reduce((acc, t) => acc + (t.taxa_sgvaq ?? 0), 0)
   const quantidadeVendas = transacoes.filter(t => t.tipo === 'venda').length
@@ -67,7 +67,7 @@ export async function listarTransacoes(
 export async function calcularResumoFinanceiro(eventoId: string, limit = 5000): Promise<ResumoFinanceiro> {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
     const transacoes = mockTransacoes.filter(t => t.evento_id === eventoId) as FinanceiroTransacao[]
-    return { ...calcularResumoDeTransacoes(transacoes), transacoes }
+    return { ...(await calcularResumoDeTransacoes(transacoes)), transacoes }
   }
   const session = await getSession()
   requireRole(session, ['organizador', 'financeiro'])
@@ -83,7 +83,7 @@ export async function calcularResumoFinanceiro(eventoId: string, limit = 5000): 
   if (error) throw new Error(error.message)
 
   const transacoes = (data ?? []) as FinanceiroTransacao[]
-  const resumoCalc = calcularResumoDeTransacoes(transacoes)
+  const resumoCalc = await calcularResumoDeTransacoes(transacoes)
   return { ...resumoCalc, transacoes }
 }
 

@@ -6,7 +6,6 @@ import { getSession } from '@/lib/auth/get-session'
 import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import { vendaSchema } from '@/lib/senhas/schema'
-export { vendaSchema } from '@/lib/senhas/schema'
 import { mockSenhas, mockCompetidores, mockModalidades } from '@/lib/mock/data'
 
 export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema>) {
@@ -35,7 +34,7 @@ export async function venderSenhaPresencial(formData: z.infer<typeof vendaSchema
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
 
   // Buscar competidor pelo CPF
   const cpfClean = parsed.data.competidor_cpf.replace(/\D/g, '')
@@ -130,7 +129,7 @@ export async function cancelarSenha(senhaId: string, motivo?: string) {
 
   if (error) return { error: error.message }
 
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
   await admin.rpc('decrement_senhas_vendidas', { p_modalidade_id: senha.modalidade_id })
 
   await supabase.from('financeiro_transacoes').insert({

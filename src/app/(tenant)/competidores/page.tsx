@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/get-session'
 import { requireRole } from '@/lib/auth/require-role'
+import { mockCompetidores } from '@/lib/mock/data'
 import { Users, Phone, CreditCard, Search, X } from 'lucide-react'
 
 function formatCPF(cpf: string) {
@@ -23,23 +24,46 @@ export default async function CompetidoresPage({
   const session = await getSession()
   requireRole(session, ['organizador', 'financeiro'])
 
-  const supabase = await createClient()
   const q = params.q?.trim() ?? ''
   const page = Math.max(0, Number(params.page ?? 0))
   const PAGE_SIZE = 50
 
-  let query = supabase
-    .from('competidores')
-    .select('id, nome, cpf, whatsapp, created_at', { count: 'exact' })
-    .order('nome')
-    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+  let competidores: any[] = []
+  let total = 0
 
-  if (q) {
-    query = query.or(`nome.ilike.%${q}%,cpf.ilike.%${q.replace(/\D/g, '')}%`) as any
+  const isMock = true
+
+  if (isMock) {
+    // Deduplica por id para evitar registros repetidos de hot-reload
+    const unique = mockCompetidores.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i)
+    let filtered = [...unique]
+    if (q) {
+      const cpfClean = q.replace(/\D/g, '')
+      const term = q.toLowerCase()
+      filtered = filtered.filter(c =>
+        c.nome.toLowerCase().includes(term) ||
+        c.cpf.includes(cpfClean)
+      )
+    }
+    filtered.sort((a, b) => a.nome.localeCompare(b.nome))
+    total = filtered.length
+    competidores = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+  } else {
+    const supabase = await createClient()
+    let query = supabase
+      .from('competidores')
+      .select('id, nome, cpf, whatsapp, created_at', { count: 'exact' })
+      .order('nome')
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+
+    if (q) {
+      query = query.or(`nome.ilike.%${q}%,cpf.ilike.%${q.replace(/\D/g, '')}%`) as any
+    }
+
+    const result = await query
+    competidores = result.data ?? []
+    total = result.count ?? 0
   }
-
-  const { data: competidores, count } = await query
-  const total = count ?? 0
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">

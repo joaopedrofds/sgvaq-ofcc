@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const passadaSchema = z.object({
@@ -23,12 +23,8 @@ export async function POST(request: NextRequest) {
   }
   const token = authHeader.slice(7)
 
-  const supabaseAuth = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  )
-  const { data: { user } } = await supabaseAuth.auth.getUser(token)
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await (supabaseAuth as any).auth.getUser(token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: unknown
@@ -44,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = parsed.data
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
 
   // Verifica que juiz_id bate com o usuário autenticado e obtém o tenant_id
   const { data: tenantUser } = await admin

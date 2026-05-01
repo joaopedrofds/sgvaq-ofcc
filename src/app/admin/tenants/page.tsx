@@ -9,12 +9,11 @@ const planoLabels: Record<string, string> = {
   enterprise: 'Enterprise',
 }
 
-export default async function TenantsPage({
-  searchParams,
-}: {
-  searchParams: { q?: string }
+export default async function TenantsPage(props: {
+  searchParams: Promise<{ q?: string }>
 }) {
-  const admin = createAdminClient()
+  const searchParams = await props.searchParams
+  const admin = await createAdminClient()
   const q = searchParams.q?.trim() ?? ''
 
   let query = admin

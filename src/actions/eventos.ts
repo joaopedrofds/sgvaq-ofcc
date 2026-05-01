@@ -7,7 +7,6 @@ import { requireRole } from '@/lib/auth/require-role'
 import { revalidatePath } from 'next/cache'
 import type { EventoStatus } from '@/types'
 import { eventoSchema, validateEventoTransition } from '@/lib/eventos/schema'
-export { eventoSchema, validateEventoTransition } from '@/lib/eventos/schema'
 import { mockEventos, addMockEvento } from '@/lib/mock/data'
 
 export async function createEvento(formData: z.infer<typeof eventoSchema>) {
@@ -22,7 +21,7 @@ export async function createEvento(formData: z.infer<typeof eventoSchema>) {
   const parsed = eventoSchema.safeParse(formData)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
   const { data: limitOk } = await admin.rpc('check_plan_limit', {
     p_tenant_id: session!.tenantId as string,
     p_resource: 'eventos_mes',

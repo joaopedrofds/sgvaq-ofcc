@@ -100,7 +100,7 @@ export function EventoForm({ eventoId, defaultValues }: EventoFormProps) {
       )}
 
       <div className="pt-4 border-t border-stone-800">
-        <Button typeof="submit" disabled={loading} className="w-full sm:w-auto h-12 px-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-base transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)] disabled:opacity-50 disabled:cursor-not-allowed">
+        <Button type="submit" disabled={loading} className="w-full sm:w-auto h-12 px-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-base transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)] disabled:opacity-50 disabled:cursor-not-allowed">
           {loading ? 'Processando dados...' : eventoId ? 'Salvar Alterações' : 'Criar Evento no Sistema'}
         </Button>
       </div>

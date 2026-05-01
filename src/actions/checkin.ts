@@ -12,7 +12,7 @@ const qrSchema = z.object({
   tenant_id: z.string().min(1),
 })
 
-export function parseQRCode(raw: string): { senha_id: string; tenant_id: string } | null {
+export async function parseQRCode(raw: string): Promise<{ senha_id: string; tenant_id: string } | null> {
   try {
     const result = qrSchema.safeParse(JSON.parse(raw))
     return result.success ? result.data : null
@@ -34,7 +34,7 @@ export async function fazerCheckin(senhaId: string, tenantIdQR: string) {
   }
 
   const supabase = await createClient()
-  const admin = createAdminClient()
+  const admin = await createAdminClient()
 
   // Busca a senha filtrando também pelo tenant_id — não confia só no QR
   const { data: senha } = await supabase
@@ -49,11 +49,11 @@ export async function fazerCheckin(senhaId: string, tenantIdQR: string) {
   if (senha.status === 'checkin_feito') return { error: 'Check-in já realizado para esta senha' }
   if (senha.status === 'pendente') return { error: 'Senha pendente de aprovação' }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await (supabase
     .from('senhas')
     .update({ status: 'checkin_feito' })
     .eq('id', senhaId)
-    .eq('status', 'ativa') // otimista: só faz checkin se ainda estiver ativa
+    .eq('status', 'ativa') as any) // otimista: só faz checkin se ainda estiver ativa
 
   if (updateError) return { error: updateError.message }
 
@@ -125,10 +125,10 @@ export async function avancarFila(filaId: string, novoStatus: 'chamado' | 'passo
   if (novoStatus === 'passou') updates.hora_entrada = new Date().toISOString()
   if (novoStatus === 'ausente') updates.hora_ausencia = new Date().toISOString()
 
-  const { error } = await supabase
+  const { error } = await (supabase
     .from('fila_entrada')
     .update(updates)
-    .eq('id', filaId)
+    .eq('id', filaId) as any)
 
   if (error) return { error: error.message }
   revalidatePath('/eventos')

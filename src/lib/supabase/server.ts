@@ -1,11 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
-import { createMockServerClient } from './mock-server'
 
 export async function createClient() {
   if (process.env.NEXT_PUBLIC_MOCK === 'true') {
-    return createMockServerClient()
+    // Dynamic import evita TypeScript build errors com thenable types
+    const { createMockServerClient } = await import('./mock-server')
+    return createMockServerClient() as any
   }
 
   const cookieStore = await cookies()

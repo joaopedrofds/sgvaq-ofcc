@@ -1,13 +1,17 @@
 import type { NextConfig } from "next";
-import withPWA from 'next-pwa'
 
-const pwaConfig = withPWA({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: true,
-  skipWaiting: true,
-})
+const nextConfig: NextConfig = {
+  turbopack: {},
+};
 
-const nextConfig: NextConfig = {};
-
-export default pwaConfig(nextConfig)
+// Só aplica o PWA em produção (build)
+if (process.env.NODE_ENV === 'production') {
+  const withPWA = require('next-pwa')
+  module.exports = withPWA({
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+  })(nextConfig)
+} else {
+  module.exports = nextConfig
+}

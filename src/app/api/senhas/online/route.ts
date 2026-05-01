@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'CPF deve ter 11 dígitos' }, { status: 400 })
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
 
   // Upsert competidor pelo CPF
   const { data: competidor, error: compErr } = await supabase

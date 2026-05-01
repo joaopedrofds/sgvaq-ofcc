@@ -2,11 +2,8 @@ import { listarTodasNotificacoes } from '@/actions/notificacoes'
 import { NotificacaoTable } from '@/components/notificacoes/NotificacaoTable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface PageProps {
-  searchParams: { status?: string }
-}
-
-export default async function NotificacoesAdminPage({ searchParams }: PageProps) {
+export default async function NotificacoesAdminPage(props: { searchParams: Promise<{ status?: string }> }) {
+  const searchParams = await props.searchParams
   const notificacoes = await listarTodasNotificacoes({ status: searchParams.status }, 200)
   const falhas = notificacoes.filter(n => n.status === 'falhou').length
   const enviadas = notificacoes.filter(n => n.status === 'enviado').length

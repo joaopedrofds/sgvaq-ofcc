@@ -1,4 +1,3 @@
-import { createAdminClient } from '@/lib/supabase/admin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Calendar, DollarSign, Bell, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
@@ -7,8 +6,37 @@ function formatBRL(centavos: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100)
 }
 
-export default async function AdminDashboardPage() {
-  const admin = createAdminClient()
+async function getDashboardData() {
+  // Modo mock: nao chama Supabase, retorna dados de src/lib/mock/data.ts
+  if (process.env.NEXT_PUBLIC_MOCK === 'true') {
+    const { mockTenant, mockEventos, mockNotificacoes, mockCobrancas } = await import('@/lib/mock/data')
+
+    const totalTenants = 1
+    const tenantsAtivos = mockTenant.ativo ? 1 : 0
+    const eventosTotal = mockEventos.length
+    const notifFalhas = mockNotificacoes.filter(n => n.status === 'falhou').length
+
+    // A pagina espera "total_cobranca" e "mes"; o mock usa "valor_devido" e "mes_referencia".
+    // Mapeamos para manter o JSX original intocado.
+    const cobrancasData = mockCobrancas.map(c => ({ total_cobranca: c.valor_devido }))
+    const cobrancasPendentes = mockCobrancas
+      .filter(c => c.status === 'pendente')
+      .sort((a, b) => b.mes_referencia.localeCompare(a.mes_referencia))
+      .slice(0, 5)
+      .map(c => ({
+        id: c.id,
+        tenant: { nome: c.tenant?.nome ?? mockTenant.nome },
+        mes: c.mes_referencia,
+        total_cobranca: c.valor_devido,
+        status: c.status,
+      }))
+
+    return { totalTenants, tenantsAtivos, eventosTotal, notifFalhas, cobrancasData, cobrancasPendentes }
+  }
+
+  // Modo real: usa Supabase admin client (import dinamico para nao carregar em mock)
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = await createAdminClient()
 
   const [
     { count: totalTenants },
@@ -29,12 +57,32 @@ export default async function AdminDashboardPage() {
       .limit(5),
   ])
 
+  return {
+    totalTenants: totalTenants ?? 0,
+    tenantsAtivos: tenantsAtivos ?? 0,
+    eventosTotal: eventosTotal ?? 0,
+    notifFalhas: notifFalhas ?? 0,
+    cobrancasData: cobrancasData ?? [],
+    cobrancasPendentes: cobrancasPendentes ?? [],
+  }
+}
+
+export default async function AdminDashboardPage() {
+  const {
+    totalTenants,
+    tenantsAtivos,
+    eventosTotal,
+    notifFalhas,
+    cobrancasData,
+    cobrancasPendentes,
+  } = await getDashboardData()
+
   const receitaTotal = (cobrancasData ?? []).reduce((acc: number, c: any) => acc + c.total_cobranca, 0)
 
   const stats = [
-    { label: 'Organizadoras ativas', value: tenantsAtivos ?? 0, total: totalTenants ?? 0, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/tenants' },
-    { label: 'Eventos cadastrados', value: eventosTotal ?? 0, icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50', href: null },
-    { label: 'Notif. com falha', value: notifFalhas ?? 0, icon: Bell, color: 'text-red-600', bg: 'bg-red-50', href: '/admin/notificacoes' },
+    { label: 'Organizadoras ativas', value: tenantsAtivos, total: totalTenants, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/tenants' },
+    { label: 'Eventos cadastrados', value: eventosTotal, icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50', href: null },
+    { label: 'Notif. com falha', value: notifFalhas, icon: Bell, color: 'text-red-600', bg: 'bg-red-50', href: '/admin/notificacoes' },
   ]
 
   return (
