@@ -6,10 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { loginMockAction } from './mock-login-action'
+
+const MOCK_EMAIL = 'admin@vaquejada.com'
+const MOCK_PASSWORD = '123456789Aa@'
+
+const isMockMode = process.env.NEXT_PUBLIC_MOCK === 'true'
 
 export default function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(isMockMode ? MOCK_EMAIL : '')
+  const [password, setPassword] = useState(isMockMode ? MOCK_PASSWORD : '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -20,18 +26,31 @@ export default function LoginForm() {
     setLoading(true)
     setError(null)
 
-    // For demonstration, if no DB configured or user wants to see frontend easily:
-    if (email === 'demo@sgvaq.com' && password === 'demo123') {
-       document.cookie = "demo_bypass=true; path=/";
-       setTimeout(() => {
-         router.push('/dashboard')
-       }, 800)
-       return
+    // Modo mock — usa server action que seta cookie de sessão
+    if (isMockMode) {
+      const formData = new FormData()
+      formData.set('email', email)
+      formData.set('password', password)
+      const result = await loginMockAction(formData)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
+      }
+      // Em sucesso, server action faz o redirect
+      return
     }
 
+    // Atalho legado de demo (mantido por compatibilidade)
+    if (email === 'demo@sgvaq.com' && password === 'demo123') {
+      document.cookie = 'demo_bypass=true; path=/'
+      setTimeout(() => router.push('/dashboard'), 400)
+      return
+    }
+
+    // Auth real do Supabase
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError('Credenciais inválidas. Tente "demo@sgvaq.com" com senha "demo123" para testar o painel visual.')
+      setError('Credenciais inválidas. Verifique e tente novamente.')
       setLoading(false)
       return
     }
@@ -47,6 +66,16 @@ export default function LoginForm() {
           <p className="text-sm text-red-400 leading-tight">{error}</p>
         </div>
       )}
+
+      {isMockMode && (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <p className="text-[11px] uppercase tracking-wider font-bold text-amber-400 mb-1">Modo Demo</p>
+          <p className="text-xs text-stone-300 leading-snug">
+            Credenciais já preenchidas. Basta clicar em <span className="font-semibold text-amber-400">Acessar Painel SGVAQ</span>.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="email" className="text-zinc-300">E-mail Corporativo</Label>
         <Input
@@ -75,9 +104,9 @@ export default function LoginForm() {
           className="bg-black/50 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-amber-500 h-11"
         />
       </div>
-      <Button 
-        type="submit" 
-        className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold h-11 mt-2 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]" 
+      <Button
+        type="submit"
+        className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold h-11 mt-2 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]"
         disabled={loading}
       >
         {loading ? (

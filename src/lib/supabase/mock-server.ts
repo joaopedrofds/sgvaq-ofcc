@@ -18,6 +18,8 @@ function mockFrom(table: string) {
     ranking: mockRanking as any[],
     tenant_users: mockEquipe as any[],
     transacoes: mockTransacoes as any[],
+    // Alias usado por algumas páginas (dashboard, financeiro)
+    financeiro_transacoes: mockTransacoes as any[],
     cobrancas: mockCobrancas as any[],
     notificacoes: mockNotificacoes as any[],
     criterios_pontuacao: mockCriterios as any[],

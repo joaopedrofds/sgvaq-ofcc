@@ -1,13 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LoginForm from './login-form'
 import { Trophy } from 'lucide-react'
 import Link from 'next/link'
+import { getSession } from '@/lib/auth/get-session'
 
 export default async function LoginPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+  // Usa getSession (que respeita o cookie do mock) — assim o usuário
+  // não é auto-redirecionado pra dashboard sem ter feito login.
+  const session = await getSession()
+  if (session) redirect('/dashboard')
 
   return (
     <div className="min-h-screen w-full flex bg-black">
