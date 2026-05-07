@@ -20,7 +20,7 @@ export interface MockEvento {
   local: string | null
   cidade: string
   estado: string
-  status: 'rascunho' | 'aberto' | 'em_andamento' | 'encerrado'
+  status: 'rascunho' | 'aberto' | 'em_andamento' | 'encerrado' | 'cancelado'
   banner_url: string | null
   regulamento_url: string | null
   created_at: string

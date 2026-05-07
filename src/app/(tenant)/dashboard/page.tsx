@@ -65,7 +65,6 @@ interface DashboardData {
 
 /** Carrega dados do mock diretamente — usado quando NEXT_PUBLIC_MOCK=true */
 function loadMockDashboardData(): DashboardData {
-  const ativos = ['aberto', 'publicado', 'em_andamento']
   const eventosNaoCancelados = mockEventos.filter(e => e.status !== 'cancelado')
   const eventosAtivosLista = mockEventos.filter(e => e.status === 'em_andamento')
 
